@@ -14,7 +14,7 @@ class Server:
         headers = rest_params.get("headers", {})
         kwargs = rest_params.get("kwargs", {})
         for key,value in headers.items():
-            if key=="":
+            if not key:
                 headers.pop(key)
                 break
         response = client.request(method, url,data=data, headers=headers, **kwargs)
