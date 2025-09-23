@@ -7,7 +7,7 @@ class Ui:
 
     def __init__(self):
         self.server = Server()
-        self.rest_params  = {"method":"","url":"", "params":{}, "body": "", "headers":{}, "files": {}}
+        self.rest_params  = st.session_state.get("rest_params")
         self.local = Local()
 
     def start_page(self):        
@@ -28,24 +28,23 @@ class Ui:
     
     def rest_form(self):
         method_col, url_col = st.columns([.2, .8])
-        methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
-        
-        # Set index for selectbox based on loaded request
+        methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]        
+       
         method_index = methods.index(self.rest_params['method']) if self.rest_params['method'] in methods else 0
 
         with method_col:
             self.rest_params['method'] = st.selectbox("HTTP Method", methods, index=method_index)
         self.url_placeholder = st.empty()
         with url_col:
-            self.rest_params['url'] = st.text_input("URL", "")
+            self.rest_params['url'] = st.text_input("URL", self.rest_params['url'])
         
     def tabs(self):
-        param_tab, body_tab, header_tab, file_tab = st.tabs(["Params", "Body", "Headers", "Files"])
+        param_tab, body_tab, header_tab, file_tab = st.tabs(["Data", "Body", "Headers", "Files"])
       
         self.params = {}
         self.body = ""
         with param_tab:
-           self.custom_tab_view("Params")
+           self.custom_tab_view("Data")
            
         with body_tab:
             self.rest_params['body'] = st.text_area("Body", self.rest_params.get('body', ''))
@@ -73,20 +72,23 @@ class Ui:
 
     def custom_tab_view(self, tab_name):
         tab_key = tab_name.lower()
+        tab_data = self.rest_params.get(tab_key, {})
         for i,e in enumerate(st.session_state[tab_key]):    
-            for key, value in e.items():                
+
+            for key, value in enumerate(e.items()):                
                 param_col1, param_col2 = st.columns([.4, .6])
                 header_key = ""
                 header_value = ""
                 with param_col1:
-                    header_key = st.text_input("Key", key, key=f"{tab_key}_key_{i}")
-                    self.rest_params[tab_key][header_key] = ""
+                    header_key = st.text_input("Key", key, key=f"{tab_key}_key_{i}")                    
                 with param_col2:
                     header_value = st.text_input("Value", value, key=f"{tab_key}_value_{i}")
-                    self.rest_params[tab_key][header_key] = header_value
+                if header_key:    
+                    self.rest_params[tab_key].append({header_key : header_value})
 
-        if st.button(f"Add {tab_name}"):
-            st.session_state[tab_key].append({"":""})
+            if st.button(f"Add {tab_name}"):        
+                
+                st.session_state[tab_key].append({"":""})
             
     def action_button(self):
         action_col1, action_col2, action_col3 = st.columns([.4, .4, .2])
@@ -103,9 +105,29 @@ class Ui:
             if st.button("Save Request"):
                 st.session_state.show_save_popup = True
             if st.session_state.show_save_popup:
-                with st.container(border=True):
+                with st.container(border=True):                   
+                    new_request_name = st.text_input("Request Name:", key="new_request_input")
+                    group_names = list(st.session_state.menu_items.keys())
+                    group_names.append("Create New Group")
+                    selected_group = st.selectbox("Select Group:", group_names, key="group_selectbox")
+                    col1, col2 = st.columns(2)                    
+                    with col1:  
+                        if st.button("Save", key="request_save_button"):
+                            if new_request_name and new_request_name.strip():
+                                if selected_group:
+                                  
+                                    if self.local.save_request(selected_group, new_request_name.strip(), self.rest_params):
+                                        st.session_state.menu_items[selected_group][new_request_name.strip()] = self.rest_params
+                                    else:
+                                        st.warning("Request with this name already exists in the selected group.")
+                                else:
+                                    st.warning("Please select a group.")
+                                st.session_state.show_save_popup = False
+                                st.rerun() # Rerun to update the menu immediately
+                            else:
+                                st.warning("Please enter a name.")
+
                 
-                # Implement save request functionality here
         
         with action_col3:
             if st.button("Clear"):
@@ -185,17 +207,15 @@ class Ui:
 
     def _load_request(self, request_data):
         """Loads request data into the UI components."""
-        self.rest_params['method'] = request_data.get('method', 'GET')
-        self.rest_params['url'] = request_data.get('url', '')
-        self.rest_params['body'] = request_data.get('body', '')
-
+        self.rest_params = request_data
+        st.session_state["rest_params"] = request_data
         # Update session state for dynamic tabs
-        params = request_data.get('params', {})
-        st.session_state['params'] = self._convert_dict_to_list_of_dicts(params)
-        self.rest_params['params'] = params
+        data = request_data.get('data', {})
+        st.session_state['data'] = data# self._convert_dict_to_list_of_dicts(params)
+        self.rest_params['data'] = data
 
         headers = request_data.get('headers', {})
-        st.session_state['headers'] = self._convert_dict_to_list_of_dicts(headers)
+        st.session_state['headers'] = headers #self._convert_dict_to_list_of_dicts(headers)
         self.rest_params['headers'] = headers
 
     def _convert_dict_to_list_of_dicts(self, data_dict):

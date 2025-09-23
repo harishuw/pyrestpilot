@@ -26,8 +26,18 @@ class Local:
             print(f"An error occurred: {e}")   
             return False
 
-    def save_request(self, rest_params):
-        pass
+    def save_request(self, group_name,request_name, rest_params):
+        try:
+            if group_name not in self.folders:
+                created = self.create_group(group_name)
+                if not created:
+                    return False            
+            with open(f"saved_requests/{group_name}/{request_name}.json", "w") as f:
+                json.dump(rest_params, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"An error occurred: {e}")   
+            return False
 
     def load_request(self, filename):
 

@@ -10,20 +10,14 @@ class Server:
         client = httpx.Client()
         method = rest_params.get("method", "GET")
         url = rest_params.get("url", "")
-        data = rest_params.get("body", "")
+        json_data = rest_params.get("body", "")
+        data = rest_params.get("data", {})
         headers = rest_params.get("headers", {})
         kwargs = rest_params.get("kwargs", {})
         for key,value in headers.items():
             if not key:
                 headers.pop(key)
                 break
-        response = client.request(method, url,data=data, headers=headers, **kwargs)
+        response = client.request(method, url,json=json_data,data=data, headers=headers, **kwargs)
         return response
-        print(r.status_code)
-        print(r.text)
-        print(r.headers)
-        print(r.cookies)
-        print(r.history)
-        print(r.request.headers)
-        print(r.request.url)
-        print(r.request.method)
+ 
